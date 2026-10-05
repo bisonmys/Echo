@@ -309,7 +309,8 @@ p,h1,h2,h3,ul{margin:0;padding:0}
             <p data-mode="keys">Toward you puts your hands in horn order with the phone lying flat. At the top matches a fingering chart.</p>
             <p data-mode="notes">At the top puts higher notes higher on the screen, like the horn in your hands. Toward you turns it to the player's view.</p></div>
           <div class="row"><span class="lab">Key size</span>
-            <div class="seg"><button type="button" id="pad-sm">Smaller</button><button type="button" id="pad-lg">Larger</button></div></div>
+            <div class="seg"><button type="button" id="pad-sm">Smaller</button><button type="button" id="pad-lg">Larger</button></div>
+            <p>Larger stops at the biggest that fits. For bigger still, swipe the bottom panel down.</p></div>
           <div class="row" data-mode="keys"><span class="lab">Fingers</span>
             <div class="seg" data-cfg="fingers"><button type="button" data-v="all">Every finger</button><button type="button" data-v="five">Five-finger</button></div>
             <p>Five-finger is for iPhones, which track five touches. Right-hand keys count the left hand as down, and a low pinky key counts every finger above it. In either mode, Right 3 counts Right 1 and 2. Keys held for you turn dark with a gold ring. The 1&amp;1 A♭ needs Every finger; use bis here.</p></div>
@@ -343,7 +344,7 @@ p,h1,h2,h3,ul{margin:0;padding:0}
             <li data-mode="notes"><b>The two octaves stand side by side.</b> A note and its octave sit at the same height. Flats sit beside the ladder on the side of the hand that plays them.</li>
             <li data-mode="notes"><b>Hold a note and touch another to slur.</b> Lift and touch to tongue. Slide a finger to run across notes.</li>
           </ul>
-          <p class="ver">Echo 1.2. Works without a connection once it has been opened from the home screen.</p>
+          <p class="ver">Echo 1.3. Works without a connection once it has been opened from the home screen.</p>
         </div>
 
       </div>
@@ -624,9 +625,11 @@ const stage = el('stage'), field = el('field'), deck = el('deck'), chart = el('c
 /* ---------- settings ---------- */
 const STORE = 'echo-app';
 const fivePhone = /iPhone|iPod/.test(navigator.userAgent);
-const cfg = {mode:'keys', size:1, flip: matchMedia('(pointer:coarse)').matches, nflip:false, fingers: fivePhone ? 'five' : 'all', air:'auto', timing:'normal',
+const cfg = {mode:'keys', zoom:1, flip: matchMedia('(pointer:coarse)').matches, nflip:false, fingers: fivePhone ? 'five' : 'all', air:'auto', timing:'normal',
   elevel:'1', etempo:100, ekeys:'any', auto:false, free:false, loud:false, slim:false, lab:'deg', fpc:2, fq:'min', bstyle:'comp'};
 try { Object.assign(cfg, JSON.parse(localStorage.getItem(STORE) || '{}') || {}); } catch(e){}
+delete cfg.size;   /* an older setting that pinned the keys to one size; zoom is a share of whatever fits */
+cfg.zoom = Math.max(0.6, Math.min(1, +cfg.zoom || 1));
 const save = () => { try { localStorage.setItem(STORE, JSON.stringify(cfg)); } catch(e){} };
 const keysMode = () => cfg.mode === 'keys';
 const flipNow = () => keysMode() ? cfg.flip : cfg.nflip;
@@ -660,7 +663,7 @@ function layout(){
   if (!sw || !sh || !B) return;
   const pad = 2;
   fit = Math.min((sw - pad * 2) / B.w, (sh - pad * 2) / B.h);
-  S = Math.min(fit, 1.04 * cfg.size);
+  S = Math.min(fit, 1.04) * cfg.zoom;   /* as big as fits the space there is now, times the chosen key size */
   const w = B.w * S, h = B.h * S, flip = flipNow();
   field.classList.toggle('tiny', S < 0.64);
   field.style.cssText = 'left:'+((sw - w) / 2)+'px;top:'+((sh - h) / 2)+'px;width:'+w+'px;height:'+h+'px;--s:'+S.toFixed(3);
@@ -675,8 +678,8 @@ function layout(){
   });
   bodyEl.style.transform = flip ? 'scaleY(-1)' : '';
   rect = field.getBoundingClientRect();
-  el('pad-sm').disabled = cfg.size <= 0.56;
-  el('pad-lg').disabled = 1.04 * cfg.size >= fit - 0.001;
+  el('pad-sm').disabled = cfg.zoom <= 0.601;
+  el('pad-lg').disabled = cfg.zoom >= 0.999;
 }
 function over(k, x, y){   /* how far outside key k the point is, in layout units (0 = inside) */
   if (k.c) return Math.max(0, Math.hypot(x - k.c[0], y - k.c[1]) - k.r);
@@ -913,8 +916,8 @@ function sheetSet(open){
 el('setup-open').addEventListener('click', () => sheetSet(true));
 el('sheet-done').addEventListener('click', () => sheetSet(false));
 el('sheet-scrim').addEventListener('click', () => sheetSet(false));
-el('pad-sm').addEventListener('click', () => { cfg.size = Math.max(0.56, Math.min(cfg.size, fit / 1.04) - 0.08); save(); layout(); });
-el('pad-lg').addEventListener('click', () => { cfg.size = Math.min(fit / 1.04, cfg.size + 0.08); save(); layout(); });
+el('pad-sm').addEventListener('click', () => { cfg.zoom = Math.max(0.6, cfg.zoom - 0.08); save(); layout(); });
+el('pad-lg').addEventListener('click', () => { cfg.zoom = Math.min(1, cfg.zoom + 0.08); save(); layout(); });
 
 /* ---------- echo: the pad plays a phrase over its chord, then listens for it to come back.
    Phrases are written in C (D-7, G7, Cmaj7) and moved to the key in play. ---------- */
@@ -1096,6 +1099,7 @@ function setSlim(on){
   grip.setAttribute('aria-label', cfg.slim ? 'Show the controls' : 'Hide the controls to make the keys bigger');
   if (cfg.slim) menuSet(false);
   eDraw(); layout();
+  requestAnimationFrame(layout); setTimeout(layout, 150);   /* and again once the panel has settled */
 }
 let gy = null, swiped = false;
 deck.addEventListener('pointerdown', e => { gy = e.clientY; swiped = false; });

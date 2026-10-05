@@ -1,6 +1,6 @@
 /* Echo: keeps a copy of the app on the phone so it opens without a connection.
    Online, it fetches the newest copy first and never waits more than a moment for it. */
-const CACHE = 'echo-1.2';
+const CACHE = 'echo-1.3';
 const FILES = ['./', 'index.html', 'manifest.json', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
